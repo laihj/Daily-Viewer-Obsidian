@@ -1,134 +1,157 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { App, Plugin, PluginSettingTab, Setting, WorkspaceLeaf, TFile, ItemView } from 'obsidian';
 
-// Remember to rename these classes and interfaces!
-
-interface MyPluginSettings {
-	mySetting: string;
+interface DailyViewerSettings {
+    sortOrder: 'new-to-old' | 'old-to-new';
 }
 
-const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: 'default'
+const DEFAULT_SETTINGS: DailyViewerSettings = {
+    sortOrder: 'new-to-old'
 }
 
-export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings;
+const VIEW_TYPE_DAILY = "daily-viewer-view";
 
-	async onload() {
-		await this.loadSettings();
+class DailyViewerView extends ItemView {
+    constructor(leaf: WorkspaceLeaf) {
+        super(leaf);
+    }
 
-		// This creates an icon in the left ribbon.
-		const ribbonIconEl = this.addRibbonIcon('dice', 'Sample Plugin', (evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
-		});
-		// Perform additional things with the ribbon
-		ribbonIconEl.addClass('my-plugin-ribbon-class');
+    getViewType() {
+        return VIEW_TYPE_DAILY;
+    }
 
-		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
-		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText('Status Bar Text');
+    getDisplayText() {
+        return "Daily Viewer";
+    }
 
-		// This adds a simple command that can be triggered anywhere
-		this.addCommand({
-			id: 'open-sample-modal-simple',
-			name: 'Open sample modal (simple)',
-			callback: () => {
-				new SampleModal(this.app).open();
-			}
-		});
-		// This adds an editor command that can perform some operation on the current editor instance
-		this.addCommand({
-			id: 'sample-editor-command',
-			name: 'Sample editor command',
-			editorCallback: (editor: Editor, view: MarkdownView) => {
-				console.log(editor.getSelection());
-				editor.replaceSelection('Sample Editor Command');
-			}
-		});
-		// This adds a complex command that can check whether the current state of the app allows execution of the command
-		this.addCommand({
-			id: 'open-sample-modal-complex',
-			name: 'Open sample modal (complex)',
-			checkCallback: (checking: boolean) => {
-				// Conditions to check
-				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (markdownView) {
-					// If checking is true, we're simply "checking" if the command can be run.
-					// If checking is false, then we want to actually perform the operation.
-					if (!checking) {
-						new SampleModal(this.app).open();
-					}
+    async onOpen() {
+        const container = this.containerEl.children[1];
+        container.empty();
+        container.createEl("h4", { text: "Daily Notes" });
+        
+        await this.refresh();
+    }
 
-					// This command will only show up in Command Palette when the check function returns true
-					return true;
-				}
-			}
-		});
+    async refresh() {
+        const container = this.containerEl.children[1];
+        const contentContainer = container.createDiv("daily-viewer-content");
+        contentContainer.empty();
 
-		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SampleSettingTab(this.app, this));
+        // Get all files
+        const files = this.app.vault.getMarkdownFiles();
+        
+        // Filter and sort files
+        const dateFiles = files
+            .filter(file => /^\d{8}/.test(file.basename))
+            .sort((a, b) => {
+                const dateA = parseInt(a.basename.slice(0, 8));
+                const dateB = parseInt(b.basename.slice(0, 8));
+                return dateB - dateA;  // 降序排列
+            });
 
-		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-		// Using this function will automatically remove the event listener when this plugin is disabled.
-		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-			console.log('click', evt);
-		});
+        for (const file of dateFiles) {
+            const fileContainer = contentContainer.createDiv("daily-file-container");
+            
+            // Create date header
+            const date = file.basename;
+            const formattedDate = `${date.slice(0,4)}-${date.slice(4,6)}-${date.slice(6,8)}`;
+            fileContainer.createEl("h2", { text: formattedDate });
 
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
-	}
+            // Create content
+            const content = await this.app.vault.read(file);
+            const contentEl = fileContainer.createDiv("daily-content");
+            contentEl.createEl("div", { text: content });
+        }
+    }
 
-	onunload() {
-
-	}
-
-	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-	}
-
-	async saveSettings() {
-		await this.saveData(this.settings);
-	}
+    async onClose() {
+        // Nothing to clean up
+    }
 }
 
-class SampleModal extends Modal {
-	constructor(app: App) {
-		super(app);
-	}
+export default class DailyViewer extends Plugin {
+    settings: DailyViewerSettings;
+    view: DailyViewerView;
 
-	onOpen() {
-		const {contentEl} = this;
-		contentEl.setText('Woah!');
-	}
+    async onload() {
+        await this.loadSettings();
 
-	onClose() {
-		const {contentEl} = this;
-		contentEl.empty();
-	}
+        // Register view
+        this.registerView(
+            VIEW_TYPE_DAILY,
+            (leaf) => (this.view = new DailyViewerView(leaf))
+        );
+
+        // Add ribbon icon
+        this.addRibbonIcon('calendar-days', 'Daily Viewer', (evt: MouseEvent) => {
+            this.activateView();
+        });
+
+        // Add command
+        this.addCommand({
+            id: 'show-daily-viewer',
+            name: 'Show Daily Viewer',
+            callback: () => {
+                this.activateView();
+            }
+        });
+
+        // Add settings tab
+        this.addSettingTab(new DailyViewerSettingTab(this.app, this));
+    }
+
+    async activateView() {
+        const { workspace } = this.app;
+        
+        let leaf = workspace.getLeavesOfType(VIEW_TYPE_DAILY)[0];
+        
+        if (!leaf) {
+            leaf = workspace.getRightLeaf(false);
+            await leaf.setViewState({
+                type: VIEW_TYPE_DAILY,
+                active: true,
+            });
+        }
+        
+        workspace.revealLeaf(leaf);
+    }
+
+    async loadSettings() {
+        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    }
+
+    async saveSettings() {
+        await this.saveData(this.settings);
+    }
 }
 
-class SampleSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
+class DailyViewerSettingTab extends PluginSettingTab {
+    plugin: DailyViewer;
 
-	constructor(app: App, plugin: MyPlugin) {
-		super(app, plugin);
-		this.plugin = plugin;
-	}
+    constructor(app: App, plugin: DailyViewer) {
+        super(app, plugin);
+        this.plugin = plugin;
+    }
 
-	display(): void {
-		const {containerEl} = this;
+    display(): void {
+        const { containerEl } = this;
+        containerEl.empty();
+        containerEl.createEl('h2', { text: 'Daily Viewer Settings' });
 
-		containerEl.empty();
-
-		new Setting(containerEl)
-			.setName('Setting #1')
-			.setDesc('It\'s a secret')
-			.addText(text => text
-				.setPlaceholder('Enter your secret')
-				.setValue(this.plugin.settings.mySetting)
-				.onChange(async (value) => {
-					this.plugin.settings.mySetting = value;
-					await this.plugin.saveSettings();
-				}));
-	}
+        new Setting(containerEl)
+            .setName('Sort Order')
+            .setDesc('Choose how to sort the daily notes')
+            .addDropdown(dropdown => 
+                dropdown
+                    .addOption('new-to-old', 'Newest First')
+                    .addOption('old-to-new', 'Oldest First')
+                    .setValue(this.plugin.settings.sortOrder)
+                    .onChange(async (value: DailyViewerSettings['sortOrder']) => {
+                        this.plugin.settings.sortOrder = value;
+                        await this.plugin.saveSettings();
+                        if (this.plugin.view) {
+                            await this.plugin.view.refresh();
+                        }
+                    })
+            );
+    }
 }

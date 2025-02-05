@@ -1,8 +1,26 @@
-/*
+/* Daily Viewer Styles */
 
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
+.daily-viewer-content {
+    padding: 0 20px;
+}
 
-If your plugin does not need CSS, delete this file.
+.daily-file-container {
+    margin-bottom: 2em;
+    padding: 1em;
+    border-radius: 8px;
+    background-color: var(--background-secondary);
+}
 
-*/
+.daily-file-container h2 {
+    margin: 0 0 1em 0;
+    padding-bottom: 0.5em;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.daily-content {
+    line-height: 1.6;
+}
+
+.daily-content > div {
+    white-space: pre-wrap;
+}
