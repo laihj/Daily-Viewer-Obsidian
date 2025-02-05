@@ -34,19 +34,19 @@ class DailyViewerView extends ItemView {
         const container = this.containerEl.children[1];
         container.empty();
 
-        // 创建标题栏
+        // Create header container
         const headerContainer = container.createDiv('daily-viewer-header');
 
-        // 添加标题
+        // Add title
         headerContainer.createEl("h4", { text: "Daily Notes" });
 
-        // 添加刷新按钮
+        // Add refresh button
         const refreshButton = headerContainer.createEl('button', {
             cls: ['daily-refresh-button', 'clickable-icon']
         });
         setIcon(refreshButton, 'refresh-cw');
         refreshButton.addEventListener('click', () => {
-            // 清空内容并重新加载
+            // Clear content and reload
             const contentContainer = container.querySelector('.daily-viewer-content');
             if (contentContainer) {
                 contentContainer.remove();
@@ -59,7 +59,7 @@ class DailyViewerView extends ItemView {
 
     async refresh() {
         const container = this.containerEl.children[1];
-        // 找到或创建内容容器
+        // Find or create content container
         let contentContainer = container.querySelector('.daily-viewer-content');
         if (!contentContainer) {
             contentContainer = container.createDiv('daily-viewer-content');
@@ -70,29 +70,18 @@ class DailyViewerView extends ItemView {
         const files = this.app.vault.getFiles().filter(file => file instanceof TFile && file.extension === 'md');
         const moment = (window as any).moment;
         
-        // 打印调试信息
-        console.log('Current date format:', this.settings.dateFormat);
-        console.log('All files:', files.map(f => f.basename));
-
         // Filter and sort files
         const dateFiles = files
             .filter(file => {
                 try {
-                    // 尝试用设置中的格式解析文件名
-                    console.log('Checking file:', file.basename);
-                    // 使用非严格模式解析
+                    // Try to parse filename using the format from settings
+                    // Parse using non-strict mode
                     const parsed = moment(file.basename, this.settings.dateFormat);
-                    // 检查是否是有效日期且格式匹配
+                    // Check if it's a valid date and format matches
                     const isValid = parsed.isValid() && 
                         parsed.format(this.settings.dateFormat) === file.basename;
-                    console.log('Is valid?', isValid);
-                    if (!isValid) {
-                        console.log('Invalid date:', file.basename, 'with format:', this.settings.dateFormat);
-                        console.log('Parsed and reformatted:', parsed.format(this.settings.dateFormat));
-                    }
                     return isValid;
                 } catch (error) {
-                    console.error('Error parsing date:', file.basename, error);
                     return false;
                 }
             })
@@ -140,7 +129,7 @@ class DailyViewerView extends ItemView {
             // Create markdown content
             const markdownContainer = contentEl.createDiv("daily-markdown");
             
-            // 渲染 Markdown 内容
+            // Render Markdown content
             await MarkdownRenderer.renderMarkdown(
                 content,
                 markdownContainer,
@@ -148,7 +137,7 @@ class DailyViewerView extends ItemView {
                 this.component
             );
 
-            // 处理 Obsidian 内部图片链接
+            // Handle Obsidian internal image links
             markdownContainer.querySelectorAll('.internal-embed').forEach((embedEl) => {
                 const src = embedEl.getAttribute('src');
                 if (src) {
@@ -178,15 +167,15 @@ class DailyViewerView extends ItemView {
                 }
             });
             
-            // 为所有标签添加点击事件
+            // Add click events for all tags
             markdownContainer.querySelectorAll('a.tag').forEach(tagEl => {
                 tagEl.addEventListener('click', (e) => {
                     e.preventDefault();
                     const tagName = tagEl.textContent;
                     if (tagName) {
-                        // 去掉#符号
+                        // Remove # symbol
                         const cleanTagName = tagName.replace(/^#/, '');
-                        // 打开搜索面板并搜索标签
+                        // Open search panel and search for tag
                         this.app.internalPlugins.getPluginById('global-search').instance.openGlobalSearch(`tag:${cleanTagName}`);
                     }
                 });

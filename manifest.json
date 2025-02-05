@@ -3,7 +3,7 @@
 	"name": "Pretty Daily Viewer",
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
-	"description": "Demonstrates some of the capabilities of the Obsidian API.",
+	"description": "Display your daily logs based on the filename..",
 	"author": "Laihj",
 	"authorUrl": "https://laihjx.com",
 	"fundingUrl": "https://obsidian.md/pricing",
