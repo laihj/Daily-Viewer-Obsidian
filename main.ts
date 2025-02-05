@@ -37,11 +37,11 @@ class DailyViewerView extends ItemView {
         contentContainer.empty();
 
         // Get all files
-        const files = this.app.vault.getMarkdownFiles();
+        const files = this.app.vault.getFiles().filter(file => file instanceof TFile && file.extension === 'md');
         
         // Filter and sort files
         const dateFiles = files
-            .filter(file => /^\d{8}/.test(file.basename))
+            .filter(file => /^\d{4}-\d{2}-\d{2}$/.test(file.basename))
             .sort((a, b) => {
                 const dateA = parseInt(a.basename.slice(0, 8));
                 const dateB = parseInt(b.basename.slice(0, 8));
@@ -53,7 +53,7 @@ class DailyViewerView extends ItemView {
             
             // Create date header
             const date = file.basename;
-            const formattedDate = `${date.slice(0,4)}-${date.slice(4,6)}-${date.slice(6,8)}`;
+            const formattedDate = `${date.slice(0,4)}-${date.slice(5,7)}-${date.slice(8,10)}`;
             fileContainer.createEl("h2", { text: formattedDate });
 
             // Create content
