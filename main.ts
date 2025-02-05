@@ -2,19 +2,24 @@ import { App, Plugin, PluginSettingTab, Setting, WorkspaceLeaf, TFile, ItemView,
 
 interface DailyViewerSettings {
     sortOrder: 'new-to-old' | 'old-to-new';
+    dateFormat: string;
 }
 
 const DEFAULT_SETTINGS: DailyViewerSettings = {
-    sortOrder: 'new-to-old'
+    sortOrder: 'new-to-old',
+    dateFormat: 'YYYY-MM-DD'
 }
 
 const VIEW_TYPE_DAILY = "daily-viewer-view";
 
 class DailyViewerView extends ItemView {
     component: Component;
-    constructor(leaf: WorkspaceLeaf) {
+    settings: DailyViewerSettings;
+
+    constructor(leaf: WorkspaceLeaf, settings: DailyViewerSettings) {
         super(leaf);
         this.component = new Component();
+        this.settings = settings;
     }
 
     getViewType() {
@@ -40,13 +45,41 @@ class DailyViewerView extends ItemView {
 
         // Get all files
         const files = this.app.vault.getFiles().filter(file => file instanceof TFile && file.extension === 'md');
+        const moment = (window as any).moment;
         
+        // 打印调试信息
+        console.log('Current date format:', this.settings.dateFormat);
+        console.log('All files:', files.map(f => f.basename));
+
         // Filter and sort files
         const dateFiles = files
-            .filter(file => /^\d{4}-\d{2}-\d{2}$/.test(file.basename))
+            .filter(file => {
+                try {
+                    // 尝试用设置中的格式解析文件名
+                    console.log('Checking file:', file.basename);
+                    // 使用非严格模式解析
+                    const parsed = moment(file.basename, this.settings.dateFormat);
+                    // 检查是否是有效日期且格式匹配
+                    const isValid = parsed.isValid() && 
+                        parsed.format(this.settings.dateFormat) === file.basename;
+                    console.log('Is valid?', isValid);
+                    if (!isValid) {
+                        console.log('Invalid date:', file.basename, 'with format:', this.settings.dateFormat);
+                        console.log('Parsed and reformatted:', parsed.format(this.settings.dateFormat));
+                    }
+                    return isValid;
+                } catch (error) {
+                    console.error('Error parsing date:', file.basename, error);
+                    return false;
+                }
+            })
             .sort((a, b) => {
-                // 直接比较日期字符串，因为 YYYY-MM-DD 格式可以直接按字典序排序
-                return b.basename.localeCompare(a.basename);  // 降序排列
+                const dateA = moment(a.basename, this.settings.dateFormat);
+                const dateB = moment(b.basename, this.settings.dateFormat);
+                if (this.settings.sortOrder === 'old-to-new') {
+                    return dateA.diff(dateB);
+                }
+                return dateB.diff(dateA);
             });
 
         for (const file of dateFiles) {
@@ -57,8 +90,9 @@ class DailyViewerView extends ItemView {
             headerContainer.addClass("daily-header-flex");
             
             // Create date text
-            const date = file.basename;
-            const formattedDate = `${date.slice(0,4)}-${date.slice(5,7)}-${date.slice(8,10)}`;
+            const moment = (window as any).moment;
+            const date = moment(file.basename, this.settings.dateFormat);
+            const formattedDate = date.format(this.settings.dateFormat);
             headerContainer.createEl("h2", { text: formattedDate });
             
             // Create link button
@@ -152,7 +186,7 @@ export default class DailyViewer extends Plugin {
         // Register view
         this.registerView(
             VIEW_TYPE_DAILY,
-            (leaf) => (this.view = new DailyViewerView(leaf))
+            (leaf) => (this.view = new DailyViewerView(leaf, this.settings))
         );
 
         // Add ribbon icon
@@ -240,5 +274,32 @@ class DailyViewerSettingTab extends PluginSettingTab {
                         }
                     })
             );
+
+        new Setting(containerEl)
+            .setName('Date Format')
+            .setDesc('Format for daily note filenames (using Moment.js format)')
+            .addText(text => {
+                text.setPlaceholder('YYYY-MM-DD')
+                    .setValue(this.plugin.settings.dateFormat)
+                    .onChange(async (value) => {
+                        // 验证日期格式是否合法
+                        try {
+                            const moment = (window as any).moment;
+                            if (moment) {
+                                const testDate = moment().format(value);
+                                if (testDate !== 'Invalid date') {
+                                    this.plugin.settings.dateFormat = value;
+                                    await this.plugin.saveSettings();
+                                    // 刷新视图
+                                    if (this.plugin.view) {
+                                        await this.plugin.view.refresh();
+                                    }
+                                }
+                            }
+                        } catch (error) {
+                            console.error('Invalid date format:', error);
+                        }
+                    });
+            });
     }
 }
