@@ -176,7 +176,8 @@ class DailyViewerView extends ItemView {
                         // Remove # symbol
                         const cleanTagName = tagName.replace(/^#/, '');
                         // Open search panel and search for tag
-                        this.app.internalPlugins.getPluginById('global-search').instance.openGlobalSearch(`tag:${cleanTagName}`);
+                        // Open search with tag
+                        this.app.workspace.openLinkText(`tag:${cleanTagName}`, '', true);
                     }
                 });
             });
@@ -237,7 +238,7 @@ export default class DailyViewer extends Plugin {
         
         if (!leaf) {
             // 如果不存在，在右侧创建新的标签页
-            leaf = workspace.getLeaf('tab', 'right');
+            leaf = workspace.getLeaf('split');
             await leaf.setViewState({
                 type: VIEW_TYPE_DAILY,
                 active: true,
