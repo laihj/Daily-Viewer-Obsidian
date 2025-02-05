@@ -1,11 +1,10 @@
 {
-	"id": "pretty-daily-viewer-plugin",
+	"id": "obsidian-pretty-daily-viewer",
 	"name": "Pretty Daily Viewer",
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
 	"description": "Display your daily logs based on the filename..",
-	"author": "Laihj",
+	"author": "laihj",
 	"authorUrl": "https://laihjx.com",
-	"fundingUrl": "https://obsidian.md/pricing",
 	"isDesktopOnly": false
 }
