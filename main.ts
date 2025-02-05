@@ -1,4 +1,4 @@
-import { App, Plugin, PluginSettingTab, Setting, WorkspaceLeaf, TFile, ItemView } from 'obsidian';
+import { App, Plugin, PluginSettingTab, Setting, WorkspaceLeaf, TFile, ItemView, setIcon, MarkdownRenderer, Component } from 'obsidian';
 
 interface DailyViewerSettings {
     sortOrder: 'new-to-old' | 'old-to-new';
@@ -11,8 +11,10 @@ const DEFAULT_SETTINGS: DailyViewerSettings = {
 const VIEW_TYPE_DAILY = "daily-viewer-view";
 
 class DailyViewerView extends ItemView {
+    component: Component;
     constructor(leaf: WorkspaceLeaf) {
         super(leaf);
+        this.component = new Component();
     }
 
     getViewType() {
@@ -43,28 +45,70 @@ class DailyViewerView extends ItemView {
         const dateFiles = files
             .filter(file => /^\d{4}-\d{2}-\d{2}$/.test(file.basename))
             .sort((a, b) => {
-                const dateA = parseInt(a.basename.slice(0, 8));
-                const dateB = parseInt(b.basename.slice(0, 8));
-                return dateB - dateA;  // 降序排列
+                // 直接比较日期字符串，因为 YYYY-MM-DD 格式可以直接按字典序排序
+                return b.basename.localeCompare(a.basename);  // 降序排列
             });
 
         for (const file of dateFiles) {
             const fileContainer = contentContainer.createDiv("daily-file-container");
             
-            // Create date header
+            // Create date header with link button
+            const headerContainer = fileContainer.createDiv("daily-header-container");
+            headerContainer.addClass("daily-header-flex");
+            
+            // Create date text
             const date = file.basename;
             const formattedDate = `${date.slice(0,4)}-${date.slice(5,7)}-${date.slice(8,10)}`;
-            fileContainer.createEl("h2", { text: formattedDate });
+            headerContainer.createEl("h2", { text: formattedDate });
+            
+            // Create link button
+            const linkButton = headerContainer.createEl("button", {
+                cls: ["daily-link-button", "clickable-icon"]
+            });
+            setIcon(linkButton, "link");
+            
+            // Add click handler
+            linkButton.addEventListener("click", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.app.workspace.openLinkText(file.basename, "", true);
+            });
 
-            // Create content
-            const content = await this.app.vault.read(file);
+            // Create content container
             const contentEl = fileContainer.createDiv("daily-content");
-            contentEl.createEl("div", { text: content });
+            
+            // Get file content
+            const content = await this.app.vault.read(file);
+            
+            // Create markdown content
+            const markdownContainer = contentEl.createDiv("daily-markdown");
+            
+            // 使用 Obsidian 的 Component 系统来渲染 Markdown
+            await MarkdownRenderer.renderMarkdown(
+                content,
+                markdownContainer,
+                file.path,
+                this.component
+            );
+            
+            // 为所有标签添加点击事件
+            markdownContainer.querySelectorAll('a.tag').forEach(tagEl => {
+                tagEl.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const tagName = tagEl.textContent;
+                    if (tagName) {
+                        // 去掉#符号
+                        const cleanTagName = tagName.replace(/^#/, '');
+                        // 打开搜索面板并搜索标签
+                        this.app.internalPlugins.getPluginById('global-search').instance.openGlobalSearch(`tag:${cleanTagName}`);
+                    }
+                });
+            });
         }
     }
 
     async onClose() {
-        // Nothing to clean up
+        this.component.unload();
     }
 }
 
