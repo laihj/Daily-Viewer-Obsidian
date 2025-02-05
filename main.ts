@@ -102,16 +102,19 @@ export default class DailyViewer extends Plugin {
     async activateView() {
         const { workspace } = this.app;
         
+        // 检查是否已存在 Daily Viewer 视图
         let leaf = workspace.getLeavesOfType(VIEW_TYPE_DAILY)[0];
         
         if (!leaf) {
-            leaf = workspace.getRightLeaf(false);
+            // 如果不存在，在右侧创建新的标签页
+            leaf = workspace.getLeaf('tab', 'right');
             await leaf.setViewState({
                 type: VIEW_TYPE_DAILY,
                 active: true,
             });
         }
         
+        // 跳转到对应标签页
         workspace.revealLeaf(leaf);
     }
 
