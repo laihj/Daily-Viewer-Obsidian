@@ -33,14 +33,37 @@ class DailyViewerView extends ItemView {
     async onOpen() {
         const container = this.containerEl.children[1];
         container.empty();
-        container.createEl("h4", { text: "Daily Notes" });
+
+        // 创建标题栏
+        const headerContainer = container.createDiv('daily-viewer-header');
+
+        // 添加标题
+        headerContainer.createEl("h4", { text: "Daily Notes" });
+
+        // 添加刷新按钮
+        const refreshButton = headerContainer.createEl('button', {
+            cls: ['daily-refresh-button', 'clickable-icon']
+        });
+        setIcon(refreshButton, 'refresh-cw');
+        refreshButton.addEventListener('click', () => {
+            // 清空内容并重新加载
+            const contentContainer = container.querySelector('.daily-viewer-content');
+            if (contentContainer) {
+                contentContainer.remove();
+            }
+            this.refresh();
+        });
         
         await this.refresh();
     }
 
     async refresh() {
         const container = this.containerEl.children[1];
-        const contentContainer = container.createDiv("daily-viewer-content");
+        // 找到或创建内容容器
+        let contentContainer = container.querySelector('.daily-viewer-content');
+        if (!contentContainer) {
+            contentContainer = container.createDiv('daily-viewer-content');
+        }
         contentContainer.empty();
 
         // Get all files
