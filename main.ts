@@ -83,13 +83,43 @@ class DailyViewerView extends ItemView {
             // Create markdown content
             const markdownContainer = contentEl.createDiv("daily-markdown");
             
-            // 使用 Obsidian 的 Component 系统来渲染 Markdown
+            // 渲染 Markdown 内容
             await MarkdownRenderer.renderMarkdown(
                 content,
                 markdownContainer,
                 file.path,
                 this.component
             );
+
+            // 处理 Obsidian 内部图片链接
+            markdownContainer.querySelectorAll('.internal-embed').forEach((embedEl) => {
+                const src = embedEl.getAttribute('src');
+                if (src) {
+                    const imageFile = this.app.metadataCache.getFirstLinkpathDest(src, file.path);
+                    if (imageFile) {
+                        const resourcePath = this.app.vault.getResourcePath(imageFile);
+                        
+                        // 创建图片元素
+                        const imgEl = embedEl.createEl('img', {
+                            attr: {
+                                src: resourcePath,
+                                'data-path': imageFile.path
+                            }
+                        });
+
+                        // 添加点击事件
+                        imgEl.style.cursor = 'pointer';
+                        imgEl.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            this.app.workspace.openLinkText(
+                                imageFile.path,
+                                file.path,
+                                true
+                            );
+                        });
+                    }
+                }
+            });
             
             // 为所有标签添加点击事件
             markdownContainer.querySelectorAll('a.tag').forEach(tagEl => {
@@ -130,12 +160,22 @@ export default class DailyViewer extends Plugin {
             this.activateView();
         });
 
-        // Add command
+        // Add commands
         this.addCommand({
             id: 'show-daily-viewer',
             name: 'Show Daily Viewer',
             callback: () => {
                 this.activateView();
+            }
+        });
+
+        // Add debug command
+        this.addCommand({
+            id: 'toggle-dev-tools',
+            name: 'Toggle Developer Tools',
+            callback: () => {
+                // @ts-ignore
+                this.app.toggleDevTools();
             }
         });
 
