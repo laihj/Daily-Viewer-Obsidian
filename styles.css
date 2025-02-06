@@ -1,5 +1,19 @@
 /* Daily Viewer Styles */
 
+/* Settings styles */
+.daily-viewer-settings-header {
+    margin-bottom: 1em;
+    padding-bottom: 0.5em;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+
+/* Internal embed image styles */
+.daily-viewer-content .internal-embed img {
+    cursor: pointer;
+}
+
+
 .daily-viewer-header {
     display: flex;
     align-items: center;
@@ -72,11 +86,11 @@
 }
 
 .daily-content {
-    line-height: 1.2;
+    line-height: 1.6;
 }
 
 .daily-markdown p {
-    margin: 0.2em 0;
+    margin: 0.9em 0;
 }
 
 /* Tag styles */

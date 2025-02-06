@@ -154,7 +154,6 @@ class DailyViewerView extends ItemView {
                         });
 
                         // 添加点击事件
-                        imgEl.style.cursor = 'pointer';
                         imgEl.addEventListener('click', (e) => {
                             e.preventDefault();
                             this.app.workspace.openLinkText(
@@ -269,7 +268,7 @@ class DailyViewerSettingTab extends PluginSettingTab {
     display(): void {
         const { containerEl } = this;
         containerEl.empty();
-        containerEl.createEl('h2', { text: 'Daily Viewer Settings' });
+        containerEl.createEl('h2', { text: 'Daily Viewer Settings', cls: 'daily-viewer-settings-header' });
 
         new Setting(containerEl)
             .setName('Sort Order')
